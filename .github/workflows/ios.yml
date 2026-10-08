@@ -1,0 +1,48 @@
+name: iPhone (Simulador)
+on:
+  push:
+    branches: [testes-ios]
+jobs:
+  simulador:
+    runs-on: ${{ vars.MAC || 'macos-26' }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ambiente
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun simctl list runtimes
+          xcrun simctl list devicetypes | grep -i "iphone 1[5-7]" || true
+      - name: Projeto de teste
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+      - name: Simulador iPhone 15
+        run: |
+          RT=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; print(r[-1]['identifier'])")
+          echo "Runtime: $RT"
+          UDID=$(xcrun simctl create Lume "iPhone 15" "$RT" 2>/dev/null || xcrun simctl create Lume "iPhone 16" "$RT")
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl openurl "$UDID" "https://goncalves-tf.github.io/lume/"
+          sleep 15
+          xcrun simctl io "$UDID" screenshot antes.png
+      - name: Teste de interface
+        run: |
+          set -o pipefail
+          xcodebuild test -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -resultBundlePath resultado.xcresult CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "LUME:|error|Test Case|passed|failed|XCTAssert" | head -200
+      - name: Exportar prints
+        if: always()
+        run: |
+          mkdir -p prints
+          cp antes.png prints/ 2>/dev/null || true
+          xcrun xcresulttool export attachments --path resultado.xcresult --output-path prints || true
+          ls -la prints | head -80
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prints-ios
+          path: prints

@@ -1,0 +1,37 @@
+name: LumeTeste
+options:
+  bundleIdPrefix: br.lume.teste
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  Hospede:
+    type: application
+    platform: iOS
+    sources: [App]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: br.lume.teste.hospede
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        CODE_SIGNING_ALLOWED: NO
+        SWIFT_VERSION: "5.0"
+  LumeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Hospede
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+        TEST_TARGET_NAME: Hospede
+        SWIFT_VERSION: "5.0"
+schemes:
+  LumeUITests:
+    build:
+      targets:
+        Hospede: all
+        LumeUITests: [test]
+    test:
+      targets: [LumeUITests]
