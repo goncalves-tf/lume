@@ -7,7 +7,7 @@
     var auto = a.temaAuto !== false
     var id = auto ? (escuro ? a.temaEscuro || 'noite' : a.temaClaro || 'papel') : a.tema || 'papel'
     var cor = T[id] || T.papel
-    document.documentElement.style.background = cor
+    document.documentElement.style.backgroundColor = cor
     document.querySelector('meta[name=theme-color]').content = cor
   } catch (e) {}
 })()
