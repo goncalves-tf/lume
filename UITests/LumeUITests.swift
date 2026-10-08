@@ -222,7 +222,8 @@ final class LumeUITests: XCTestCase {
         foto("t14b_antes_de_fechar")
         let r0 = Date()
         XCTAssertTrue(abrirPeloIcone(), "reabrir pelo ícone")
-        let web2 = appWeb()
+        // O app instalado roda no processo com.apple.webapp (visto nos testes anteriores).
+        let web2 = XCUIApplication(bundleIdentifier: "com.apple.webapp")
         // Reabre direto no livro: os botões do leitor existem (escondidos) e a estante não aparece.
         let noLivro = achar(web2, ["Texto", "Ouvir", "Índice"], espera: 30) != nil
         nota(String(format: "reabriu no livro: %@ em %.1f s", noLivro ? "sim" : "não", Date().timeIntervalSince(r0)), "reabertura")
