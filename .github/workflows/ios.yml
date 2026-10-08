@@ -2,6 +2,7 @@ name: iPhone (Simulador)
 on:
   push:
     branches: [testes-ios]
+    paths: ['UITests/LumeUITests.swift', 'project.yml', 'App/**', '.github/workflows/ios.yml', 'gatilho-app.txt']
 jobs:
   simulador:
     runs-on: ${{ vars.MAC || 'macos-26' }}

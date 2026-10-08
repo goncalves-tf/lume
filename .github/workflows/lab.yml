@@ -1,0 +1,43 @@
+name: iPhone (Laboratório da faixa do relógio)
+on:
+  push:
+    branches: [testes-ios]
+    paths: ['UITests/LabUITests.swift', '.github/workflows/lab.yml', 'gatilho-lab.txt']
+jobs:
+  laboratorio:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Projeto de teste
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+      - name: Simulador iPhone 15
+        run: |
+          RT=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; print(r[-1]['identifier'])")
+          UDID=$(xcrun simctl create Lab "iPhone 15" "$RT")
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+      - name: Compilar testes
+        run: xcodebuild build-for-testing -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd CODE_SIGNING_ALLOWED=NO | tail -3
+      - name: Variantes
+        run: |
+          mkdir -p prints
+          for ap in light dark; do
+            xcrun simctl ui "$UDID" appearance $ap
+            for v in v1 v2 v3 v4 v5; do
+              xcrun simctl openurl "$UDID" "https://goncalves-tf.github.io/lume/lab/$v/"
+              sleep 8
+              TEST_RUNNER_LUME_VARIANTE="$v-$ap" xcodebuild test-without-building -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd -only-testing:LumeUITests/LabUITests/testVariante -resultBundlePath "r-$v-$ap.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "error|passed|failed" | head -5
+              mkdir -p "prints/$v-$ap"
+              xcrun xcresulttool export attachments --path "r-$v-$ap.xcresult" --output-path "prints/$v-$ap" >/dev/null 2>&1 || true
+            done
+          done
+          ls -R prints | head -80
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prints-lab
+          path: prints
