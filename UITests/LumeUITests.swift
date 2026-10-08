@@ -58,18 +58,23 @@ final class LumeUITests: XCTestCase {
         }
     }
 
+    // Qualquer sinal de que o Lume carregou (estante ou leitor).
+    let sinaisDoLume = ["Ou experimente com Dom Casmurro, de Machado de Assis", "Adicionar livro", "Trocar informação do rodapé", "Ajustes e backup"]
+
     func abrirSite() {
         safari.activate()
         sleep(3)
         fecharDicasDoSafari()
-        if achar(safari, ["Ou experimente com Dom Casmurro, de Machado de Assis", "Adicionar livro"], espera: 8) == nil {
-            // Recarrega pelo endereço se a página não estiver aberta.
-            if let campo = achar(safari, ["TabBarItemTitle", "URL", "Address", "Search or enter website name"], espera: 3) {
-                campo.tap()
-                safari.typeText(site + "\n")
-                sleep(6)
-            }
+        if achar(safari, sinaisDoLume, espera: 15) != nil { return }
+        // Não carregou: abre o endereço e espera a página de verdade (não instala página em branco).
+        if let campo = achar(safari, ["TabBarItemTitle", "URL", "Address", "Search or enter website name"], espera: 3) {
+            campo.tap()
+            safari.typeText(site + "
+")
         }
+        let ok = achar(safari, sinaisDoLume, espera: 45) != nil
+        nota(ok ? "site carregado" : "site não carregou", "abrir_site")
+        sleep(2)
     }
 
     // Usa o próprio app (no Safari ou instalado): abre o exemplo, vira, controles, ajustes, voz, deitado.
