@@ -100,6 +100,7 @@ final class LumeUITests: XCTestCase {
             sleep(2)
             foto(prefixo + "09_ajustes")
             if let noite = achar(app, ["Noite"], espera: 3) { noite.tap(); sleep(2) }
+            foto(prefixo + "10a_logo_apos_noite")
             foto(prefixo + "10_ajustes_noite")
             if let fechar = achar(app, ["Fechar"], espera: 2) { fechar.tap() }
             sleep(2)
@@ -225,7 +226,8 @@ final class LumeUITests: XCTestCase {
         // O app instalado roda no processo com.apple.webapp (visto nos testes anteriores).
         let web2 = XCUIApplication(bundleIdentifier: "com.apple.webapp")
         // Reabre direto no livro: os botões do leitor existem (escondidos) e a estante não aparece.
-        let noLivro = achar(web2, ["Texto", "Ouvir", "Índice"], espera: 30) != nil
+        // No livro, o rodapé (tempo e porcentagem) aparece; na estante, não.
+        let noLivro = achar(web2, ["Trocar informação do rodapé"], espera: 30) != nil && achar(web2, ["Sua estante está vazia"], espera: 1) == nil
         nota(String(format: "reabriu no livro: %@ em %.1f s", noLivro ? "sim" : "não", Date().timeIntervalSince(r0)), "reabertura")
         XCTAssertTrue(noLivro, "reabriu direto no livro")
         sleep(2)
