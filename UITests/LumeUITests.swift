@@ -75,7 +75,9 @@ final class LumeUITests: XCTestCase {
     // Usa o próprio app (no Safari ou instalado): abre o exemplo, vira, controles, ajustes, voz, deitado.
     func usarLeitor(_ app: XCUIApplication, _ prefixo: String) {
         let t = tela
-        if let ex = achar(app, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 6) {
+        let t0 = Date()
+        if let ex = achar(app, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 60) {
+            nota(String(format: "estante pronta em %.1f s", Date().timeIntervalSince(t0)), prefixo + "tempo_estante")
             ex.tap()
         } else {
             nota("botão do exemplo não apareceu na árvore; tocando pela posição", prefixo + "aviso")
@@ -205,7 +207,9 @@ final class LumeUITests: XCTestCase {
     func test2_InstaladoNaTelaDeInicio() throws {
         abrirSite()
         guard adicionarATelaDeInicio() else { XCTFail("não consegui adicionar à Tela de Início"); return }
+        let inicio = Date()
         guard abrirPeloIcone() else { XCTFail("ícone do Lume não apareceu"); return }
+        nota(String(format: "1ª abertura: tocou no ícone há %.1f s", Date().timeIntervalSince(inicio)), "tempo_icone")
         foto("t04_app_aberto")
         let web = appWeb()
         arvore(web, "t04_app_arvore")
@@ -215,9 +219,16 @@ final class LumeUITests: XCTestCase {
         sleep(2)
         if web.state != .notRunning { web.terminate() }
         sleep(2)
+        foto("t14b_antes_de_fechar")
+        let r0 = Date()
         XCTAssertTrue(abrirPeloIcone(), "reabrir pelo ícone")
-        sleep(3)
+        let web2 = appWeb()
+        // Reabre direto no livro: os botões do leitor existem (escondidos) e a estante não aparece.
+        let noLivro = achar(web2, ["Texto", "Ouvir", "Índice"], espera: 30) != nil
+        nota(String(format: "reabriu no livro: %@ em %.1f s", noLivro ? "sim" : "não", Date().timeIntervalSince(r0)), "reabertura")
+        XCTAssertTrue(noLivro, "reabriu direto no livro")
+        sleep(2)
         foto("t15_reaberto")
-        arvore(appWeb(), "t15_reaberto_arvore")
+        arvore(web2, "t15_reaberto_arvore")
     }
 }
