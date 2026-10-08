@@ -1,12 +1,17 @@
 import XCTest
 
-// Teste no Simulador do iOS com o Safari de verdade: instala o Lume na Tela de Início,
-// abre como app (modo tela cheia), abre o livro de exemplo, usa os controles, fecha e reabre
-// para conferir que voltou na mesma página. Tira prints de cada passo.
+// Teste no Simulador do iOS com o Safari de verdade.
+// test1: o Lume dentro do Safari (abre o livro de exemplo, vira páginas, controles, ajustes, voz, deitado).
+// test2: instala na Tela de Início, abre como app (tela cheia), usa, fecha e reabre (tem que voltar na mesma página).
 final class LumeUITests: XCTestCase {
     let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
     let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
     var site: String { ProcessInfo.processInfo.environment["LUME_URL"] ?? "https://goncalves-tf.github.io/lume/" }
+    var tela: CGSize { XCUIScreen.main.screenshot().image.size }
+
+    override func setUp() {
+        continueAfterFailure = true
+    }
 
     func foto(_ nome: String) {
         let a = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
@@ -30,62 +35,143 @@ final class LumeUITests: XCTestCase {
         print("LUME: \(nome): \(texto)")
     }
 
-    // Primeiro elemento que existe entre vários rótulos possíveis (o Safari muda de versão para versão).
-    func achar(_ app: XCUIApplication, _ rotulos: [String], tipos: [XCUIElement.ElementType] = [.button, .cell, .staticText, .other, .link], espera: TimeInterval = 2) -> XCUIElement? {
+    // Primeiro elemento que existe entre vários rótulos/identificadores possíveis.
+    func achar(_ app: XCUIApplication, _ rotulos: [String], espera: TimeInterval = 3) -> XCUIElement? {
         let fim = Date().addingTimeInterval(espera)
+        let pred = NSPredicate(format: "label IN[c] %@ OR identifier IN[c] %@", rotulos, rotulos)
         repeat {
-            for r in rotulos {
-                for t in tipos {
-                    let e = app.descendants(matching: t).matching(NSPredicate(format: "label ==[c] %@ OR identifier ==[c] %@", r, r)).firstMatch
-                    if e.exists { return e }
-                }
-            }
-            usleep(250_000)
+            let e = app.descendants(matching: .any).matching(pred).firstMatch
+            if e.exists { return e }
+            usleep(300_000)
         } while Date() < fim
         return nil
     }
 
-    func tocarTela(_ x: CGFloat, _ y: CGFloat) {
-        // Toque por posição na tela inteira (vale para o app da Tela de Início).
-        let c = springboard.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: y))
-        c.tap()
+    // Toque por posição (pontos) na tela inteira: vale para qualquer app em primeiro plano.
+    func tocar(_ x: CGFloat, _ y: CGFloat) {
+        springboard.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: y)).tap()
+    }
+
+    func fecharDicasDoSafari() {
+        for _ in 0..<3 {
+            if let x = achar(safari, ["xmark.circle.fill", "Close", "Not Now", "Continue"], espera: 1), x.isHittable { x.tap(); sleep(1) } else { return }
+        }
+    }
+
+    func abrirSite() {
+        safari.activate()
+        sleep(3)
+        fecharDicasDoSafari()
+        if achar(safari, ["Ou experimente com Dom Casmurro, de Machado de Assis", "Adicionar livro"], espera: 8) == nil {
+            // Recarrega pelo endereço se a página não estiver aberta.
+            if let campo = achar(safari, ["TabBarItemTitle", "URL", "Address", "Search or enter website name"], espera: 3) {
+                campo.tap()
+                safari.typeText(site + "\n")
+                sleep(6)
+            }
+        }
+    }
+
+    // Usa o próprio app (no Safari ou instalado): abre o exemplo, vira, controles, ajustes, voz, deitado.
+    func usarLeitor(_ app: XCUIApplication, _ prefixo: String) {
+        let t = tela
+        if let ex = achar(app, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 6) {
+            ex.tap()
+        } else {
+            nota("botão do exemplo não apareceu na árvore; tocando pela posição", prefixo + "aviso")
+            tocar(t.width / 2, t.height * 0.80)
+        }
+        sleep(10)
+        foto(prefixo + "05_livro_aberto")
+        arvore(app, prefixo + "05_livro_arvore")
+        for _ in 0..<3 { tocar(t.width * 0.9, t.height * 0.5); sleep(2) }
+        foto(prefixo + "06_tres_paginas")
+        tocar(t.width * 0.1, t.height * 0.5)
+        sleep(2)
+        foto(prefixo + "07_voltou_uma")
+        tocar(t.width / 2, t.height * 0.5)
+        sleep(2)
+        foto(prefixo + "08_controles")
+        arvore(app, prefixo + "08_controles_arvore")
+        if let texto = achar(app, ["Texto"], espera: 3) {
+            texto.tap()
+            sleep(2)
+            foto(prefixo + "09_ajustes")
+            if let noite = achar(app, ["Noite"], espera: 3) { noite.tap(); sleep(2) }
+            foto(prefixo + "10_ajustes_noite")
+            if let fechar = achar(app, ["Fechar"], espera: 2) { fechar.tap() }
+            sleep(2)
+            foto(prefixo + "11_pagina_noite")
+        } else { nota("botão Texto não apareceu", prefixo + "aviso") }
+        tocar(t.width / 2, t.height * 0.5)
+        sleep(2)
+        if let ouvir = achar(app, ["Ouvir"], espera: 3) {
+            ouvir.tap()
+            sleep(3)
+            // A voz natural no aparelho pede confirmação para baixar: aceita.
+            if let ok = achar(app, ["OK", "Ok"], espera: 4) ?? achar(springboard, ["OK"], espera: 1) { ok.tap() }
+            sleep(25)
+            foto(prefixo + "12_ouvindo")
+            arvore(app, prefixo + "12_ouvindo_arvore")
+            sleep(10)
+            foto(prefixo + "12b_ouvindo_depois")
+            if let pausa = achar(app, ["Pausar"], espera: 2) { pausa.tap(); sleep(1) }
+            if let fechar = achar(app, ["Fechar leitura em voz alta"], espera: 2) { fechar.tap(); sleep(1) }
+        } else { nota("botão Ouvir não apareceu", prefixo + "aviso") }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        sleep(4)
+        foto(prefixo + "13_deitado")
+        XCUIDevice.shared.orientation = .portrait
+        sleep(4)
+        foto(prefixo + "14_em_pe")
+    }
+
+    func test1_NoSafari() throws {
+        nota("tela \(tela.width)x\(tela.height) pt, iOS \(UIDevice.current.systemVersion)", "aparelho")
+        abrirSite()
+        foto("s01_safari")
+        arvore(safari, "s01_safari_arvore")
+        usarLeitor(safari, "s")
     }
 
     func adicionarATelaDeInicio() -> Bool {
         safari.activate()
-        sleep(3)
-        // Botão Compartilhar direto, ou dentro do menu "Mais" (Safari 26).
-        var compartilhar = achar(safari, ["Share", "ShareButton", "Compartilhar"], tipos: [.button], espera: 4)
-        if compartilhar == nil || !(compartilhar!.isHittable) {
-            if let mais = achar(safari, ["More", "Page Menu", "PageFormatMenuButton", "Mais", "…", "MoreButton"], tipos: [.button], espera: 3) {
-                mais.tap()
-                sleep(2)
-                foto("02a_menu_mais")
-                arvore(safari, "02a_menu_mais_arvore")
-                compartilhar = achar(safari, ["Share", "Compartilhar", "Share…"], espera: 3)
+        sleep(2)
+        fecharDicasDoSafari()
+        // Safari 26: "⋯" (More) -> Compartilhar -> Adicionar à Tela de Início. Versões antigas: botão Compartilhar direto.
+        if let mais = achar(safari, ["MoreMenuButton", "More"], espera: 4) {
+            mais.tap()
+            sleep(2)
+            foto("t02a_menu_mais")
+            arvore(safari, "t02a_menu_mais_arvore")
+        }
+        var adicionar = achar(safari, ["Add to Home Screen", "Adicionar à Tela de Início"], espera: 2)
+        if adicionar == nil {
+            guard let comp = achar(safari, ["Share", "ShareButton", "Compartilhar", "Share…"], espera: 4) else {
+                nota("não achei Compartilhar", "erro"); return false
+            }
+            comp.tap()
+            sleep(3)
+            foto("t02b_compartilhar")
+            arvore(safari, "t02b_compartilhar_arvore")
+            adicionar = achar(safari, ["Add to Home Screen", "Adicionar à Tela de Início"], espera: 3)
+            var n = 0
+            while (adicionar == nil || !adicionar!.isHittable) && n < 5 {
+                safari.swipeUp()
+                sleep(1)
+                adicionar = achar(safari, ["Add to Home Screen", "Adicionar à Tela de Início"], espera: 2)
+                n += 1
             }
         }
-        guard let botao = compartilhar else { nota("não achei Compartilhar", "erro"); return false }
-        botao.tap()
-        sleep(3)
-        foto("02b_compartilhar")
-        arvore(safari, "02b_compartilhar_arvore")
-        var adicionar = achar(safari, ["Add to Home Screen", "Adicionar à Tela de Início"], espera: 3)
-        var tentativas = 0
-        while (adicionar == nil || !adicionar!.isHittable) && tentativas < 5 {
-            safari.swipeUp()
-            sleep(1)
-            adicionar = achar(safari, ["Add to Home Screen", "Adicionar à Tela de Início"], espera: 2)
-            tentativas += 1
-        }
-        guard let add = adicionar else { arvore(safari, "02c_sem_adicionar"); nota("não achei Add to Home Screen", "erro"); return false }
+        guard let add = adicionar else { arvore(safari, "t02c_sem_adicionar"); nota("não achei Add to Home Screen", "erro"); return false }
         add.tap()
         sleep(3)
-        foto("02d_tela_adicionar")
-        arvore(safari, "02d_tela_adicionar_arvore")
-        guard let confirmar = achar(safari, ["Add", "Adicionar"], tipos: [.button], espera: 4) else { nota("não achei Add", "erro"); return false }
+        foto("t02d_tela_adicionar")
+        arvore(safari, "t02d_tela_adicionar_arvore")
+        guard let confirmar = achar(safari, ["Add", "Adicionar"], espera: 4) else { nota("não achei Add", "erro"); return false }
         confirmar.tap()
-        sleep(4)
+        sleep(5)
+        foto("t02e_depois_de_adicionar")
         return true
     }
 
@@ -94,100 +180,44 @@ final class LumeUITests: XCTestCase {
         sleep(2)
         let icone = springboard.icons["Lume"]
         var i = 0
-        while !(icone.exists && icone.isHittable) && i < 4 {
+        while !(icone.exists && icone.isHittable) && i < 3 {
             springboard.swipeLeft()
             sleep(1)
             i += 1
         }
-        foto("03a_tela_de_inicio")
-        guard icone.exists else { arvore(springboard, "03a_springboard_arvore"); nota("ícone não encontrado", "erro"); return false }
+        foto("t03_tela_de_inicio")
+        guard icone.exists else { arvore(springboard, "t03_springboard_arvore"); nota("ícone não encontrado", "erro"); return false }
         icone.tap()
-        sleep(7)
+        sleep(8)
         return true
     }
 
-    func testInstalarEUsarComoApp() throws {
-        continueAfterFailure = true
-        let tela = XCUIScreen.main.screenshot().image.size
-        nota("tela \(tela.width)x\(tela.height) pt, iOS \(UIDevice.current.systemVersion), \(UIDevice.current.name)", "aparelho")
-
-        safari.activate()
-        sleep(8)
-        foto("01_safari")
-        arvore(safari, "01_safari_arvore")
-
-        XCTAssertTrue(adicionarATelaDeInicio(), "adicionar à Tela de Início")
-        XCTAssertTrue(abrirPeloIcone(), "abrir pelo ícone")
-        foto("04_app_estante_vazia")
-        arvore(springboard, "04_springboard_com_app")
-        let webapp = XCUIApplication(bundleIdentifier: "com.apple.webapp")
-        nota("estado webapp: \(webapp.state.rawValue)", "webapp")
-        arvore(webapp, "04_webapp_arvore")
-
-        // Livro de exemplo
-        if let ex = achar(webapp, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 5) {
-            nota("botão exemplo em \(ex.frame)", "exemplo")
-            ex.tap()
-        } else {
-            tocarTela(tela.width / 2, tela.height * 0.66)
+    // O app da Tela de Início roda num processo próprio: acha qual é pelo que está em primeiro plano.
+    func appWeb() -> XCUIApplication {
+        for id in ["com.apple.webapp", "com.apple.WebSheet", "com.apple.SafariViewService", "com.apple.mobilesafari"] {
+            let a = XCUIApplication(bundleIdentifier: id)
+            if a.state == .runningForeground { nota("app web em primeiro plano: \(id)", "webapp"); return a }
         }
-        sleep(10)
-        foto("05_livro_aberto")
-        arvore(webapp, "05_livro_arvore")
+        nota("app web: processo não identificado", "webapp")
+        return XCUIApplication(bundleIdentifier: "com.apple.webapp")
+    }
 
-        // Virar páginas (lado direito) e voltar (esquerdo)
-        for _ in 0..<3 { tocarTela(tela.width * 0.9, tela.height * 0.5); sleep(2) }
-        foto("06_tres_paginas_depois")
-        tocarTela(tela.width * 0.1, tela.height * 0.5)
-        sleep(2)
-        foto("07_voltou_uma")
-
-        // Controles
-        tocarTela(tela.width / 2, tela.height * 0.5)
-        sleep(2)
-        foto("08_controles")
-        arvore(webapp, "08_controles_arvore")
-
-        // Ajustes de texto: tema Noite
-        if let texto = achar(webapp, ["Texto"], tipos: [.button], espera: 3) {
-            texto.tap()
-            sleep(2)
-            foto("09_ajustes")
-            if let noite = achar(webapp, ["Noite"], tipos: [.button], espera: 3) { noite.tap(); sleep(2) }
-            foto("10_ajustes_noite")
-            if let fechar = achar(webapp, ["Fechar"], tipos: [.button], espera: 2) { fechar.tap() }
-            sleep(2)
-            foto("11_pagina_noite")
-        }
-
-        // Ouvir (voz do aparelho)
-        tocarTela(tela.width / 2, tela.height * 0.5)
-        sleep(2)
-        if let ouvir = achar(webapp, ["Ouvir"], tipos: [.button], espera: 3) {
-            ouvir.tap()
-            sleep(6)
-            foto("12_ouvindo")
-            arvore(webapp, "12_ouvindo_arvore")
-            if let pausa = achar(webapp, ["Pausar"], tipos: [.button], espera: 2) { pausa.tap(); sleep(1) }
-            if let fechar = achar(webapp, ["Fechar leitura em voz alta"], tipos: [.button], espera: 2) { fechar.tap(); sleep(1) }
-        }
-
-        // Deitado
-        XCUIDevice.shared.orientation = .landscapeLeft
-        sleep(4)
-        foto("13_deitado")
-        XCUIDevice.shared.orientation = .portrait
-        sleep(4)
-        foto("14_em_pe_de_novo")
-
-        // Fecha o app de vez e abre de novo: precisa voltar na mesma página, com o livro guardado.
+    func test2_InstaladoNaTelaDeInicio() throws {
+        abrirSite()
+        guard adicionarATelaDeInicio() else { XCTFail("não consegui adicionar à Tela de Início"); return }
+        guard abrirPeloIcone() else { XCTFail("ícone do Lume não apareceu"); return }
+        foto("t04_app_aberto")
+        let web = appWeb()
+        arvore(web, "t04_app_arvore")
+        usarLeitor(web, "t")
+        // Fecha de vez e reabre: tem que voltar direto no livro, na mesma página.
         XCUIDevice.shared.press(.home)
         sleep(2)
-        webapp.terminate()
+        if web.state != .notRunning { web.terminate() }
         sleep(2)
         XCTAssertTrue(abrirPeloIcone(), "reabrir pelo ícone")
         sleep(3)
-        foto("15_reaberto")
-        arvore(webapp, "15_reaberto_arvore")
+        foto("t15_reaberto")
+        arvore(appWeb(), "t15_reaberto_arvore")
     }
 }
