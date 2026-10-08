@@ -69,8 +69,7 @@ final class LumeUITests: XCTestCase {
         // Não carregou: abre o endereço e espera a página de verdade (não instala página em branco).
         if let campo = achar(safari, ["TabBarItemTitle", "URL", "Address", "Search or enter website name"], espera: 3) {
             campo.tap()
-            safari.typeText(site + "
-")
+            safari.typeText(site + "\n")
         }
         let ok = achar(safari, sinaisDoLume, espera: 45) != nil
         nota(ok ? "site carregado" : "site não carregou", "abrir_site")
