@@ -180,7 +180,7 @@ final class LumeUITests: XCTestCase {
     func abrirPeloIcone() -> Bool {
         XCUIDevice.shared.press(.home)
         sleep(2)
-        let icone = springboard.icons["Lume"]
+        let icone = springboard.icons["Lume"].firstMatch
         var i = 0
         while !(icone.exists && icone.isHittable) && i < 3 {
             springboard.swipeLeft()

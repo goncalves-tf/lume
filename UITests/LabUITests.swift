@@ -26,7 +26,9 @@ final class LabUITests: XCTestCase {
 
     func testVariante() throws {
         continueAfterFailure = true
-        let variante = ProcessInfo.processInfo.environment["LUME_VARIANTE"] ?? "v?"
+        guard let variante = ProcessInfo.processInfo.environment["LUME_VARIANTE"] else {
+            throw XCTSkip("só roda no workflow do laboratório")
+        }
         let nome = String(variante.split(separator: "-").first ?? "v").uppercased()
         safari.activate()
         sleep(4)
@@ -50,7 +52,7 @@ final class LabUITests: XCTestCase {
         sleep(4)
         XCUIDevice.shared.press(.home)
         sleep(2)
-        let icone = springboard.icons[nome]
+        let icone = springboard.icons[nome].firstMatch
         var i = 0
         while !(icone.exists && icone.isHittable) && i < 3 { springboard.swipeLeft(); sleep(1); i += 1 }
         guard icone.exists else { foto("\(variante)_sem_icone"); XCTFail("ícone \(nome) não apareceu"); return }

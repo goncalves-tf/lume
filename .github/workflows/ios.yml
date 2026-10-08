@@ -34,7 +34,7 @@ jobs:
       - name: Teste de interface
         run: |
           set -o pipefail
-          xcodebuild test -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -resultBundlePath resultado.xcresult CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "LUME:|error|Test Case|passed|failed|XCTAssert" | head -200
+          xcodebuild test -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -resultBundlePath resultado.xcresult -skip-testing:LumeUITests/LabUITests CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "LUME:|error|Test Case|passed|failed|XCTAssert" | head -200
       - name: Exportar prints
         if: always()
         run: |
