@@ -135,8 +135,36 @@ async function falar(msg) {
   if (config.num_speakers > 1) feeds.sid = new ort.Tensor('int64', BigInt64Array.from([0n]))
   const { output } = await sessao.run(feeds)
   const taxa = config.audio.sample_rate
+  const { pesos, inicioVoz, fimVoz } = sincronia(ids, output.data, taxa)
   const dados = wav(output.data, taxa)
-  postMessage({ tipo: 'audio', id: msg.id, wav: dados, duracao: output.data.length / taxa, ms: performance.now() - t0, memMB: memoriaMB() }, [dados])
+  postMessage({ tipo: 'audio', id: msg.id, wav: dados, duracao: output.data.length / taxa, ms: performance.now() - t0, memMB: memoriaMB(), pesos, inicioVoz, fimVoz }, [dados])
+}
+
+// Para o destaque acompanhar a voz: quantos sons tem cada palavra (pausas de pontuação pesam mais) e onde a
+// fala começa e termina de verdade no áudio (sem o silêncio das pontas).
+function sincronia(ids, pcm, taxa) {
+  const mapa = config.phoneme_id_map
+  const id = (c) => (mapa[c] ? mapa[c][0] : -1)
+  const ignorar = new Set([id('_'), id('^'), id('$')])
+  const espaco = id(' ')
+  const pausaForte = new Set(['.', '!', '?', ';', ':'].map(id))
+  const pausaFraca = new Set([',', '"'].map(id))
+  const pesos = []
+  let atual = 0
+  for (const x of ids) {
+    if (ignorar.has(x)) continue
+    if (x === espaco) { if (atual > 0) pesos.push(atual); atual = 0; continue }
+    atual += pausaForte.has(x) ? 5 : pausaFraca.has(x) ? 2.5 : 1
+  }
+  if (atual > 0) pesos.push(atual)
+  let pico = 0
+  for (let i = 0; i < pcm.length; i++) { const a = Math.abs(pcm[i]); if (a > pico) pico = a }
+  const limiar = pico * 0.06
+  let a = 0
+  while (a < pcm.length && Math.abs(pcm[a]) < limiar) a++
+  let b = pcm.length - 1
+  while (b > a && Math.abs(pcm[b]) < limiar) b--
+  return { pesos, inicioVoz: a / taxa, fimVoz: (b + 1) / taxa }
 }
 
 async function andar() {
