@@ -1,0 +1,90 @@
+import XCTest
+
+// Leitura longa com a voz Faber (livro de exemplo Dom Casmurro, domínio público), para medir a memória do
+// app e ver se a página fecha sozinha. O workflow passa LUME_MINUTOS e mede o processo durante o teste.
+final class LeituraLongaUITests: XCTestCase {
+    let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+    let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+    let web = XCUIApplication(bundleIdentifier: "com.apple.webapp")
+    var tela: CGSize { XCUIScreen.main.screenshot().image.size }
+
+    func foto(_ nome: String) {
+        let a = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        a.name = nome
+        a.lifetime = .keepAlways
+        add(a)
+    }
+
+    func nota(_ texto: String, _ nome: String) { print("LUME: \(nome): \(texto)") }
+
+    func achar(_ app: XCUIApplication, _ rotulos: [String], espera: TimeInterval = 3) -> XCUIElement? {
+        let fim = Date().addingTimeInterval(espera)
+        let pred = NSPredicate(format: "label IN[c] %@ OR identifier IN[c] %@", rotulos, rotulos)
+        repeat {
+            let e = app.descendants(matching: .any).matching(pred).firstMatch
+            if e.exists { return e }
+            usleep(300_000)
+        } while Date() < fim
+        return nil
+    }
+
+    func tocar(_ x: CGFloat, _ y: CGFloat) {
+        springboard.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: y)).tap()
+    }
+
+    func testLeituraLonga() throws {
+        guard let minutosTexto = ProcessInfo.processInfo.environment["LUME_MINUTOS"] else { throw XCTSkip("só no workflow da memória") }
+        let minutos = Int(minutosTexto) ?? 10
+        let t = tela
+        safari.activate()
+        sleep(4)
+        for _ in 0..<3 {
+            if let x = achar(safari, ["xmark.circle.fill", "Close", "Not Now", "Continue"], espera: 1), x.isHittable { x.tap(); sleep(1) } else { break }
+        }
+        guard achar(safari, ["Ou experimente com Dom Casmurro, de Machado de Assis", "Adicionar livro"], espera: 45) != nil else { XCTFail("site não carregou"); return }
+        if let mais = achar(safari, ["MoreMenuButton", "More"], espera: 4) { mais.tap(); sleep(2) }
+        var add = achar(safari, ["Add to Home Screen"], espera: 2)
+        if add == nil, let comp = achar(safari, ["Share", "ShareButton"], espera: 4) {
+            comp.tap(); sleep(3)
+            add = achar(safari, ["Add to Home Screen"], espera: 3)
+            var n = 0
+            while (add == nil || !add!.isHittable) && n < 5 { safari.swipeUp(); sleep(1); add = achar(safari, ["Add to Home Screen"], espera: 2); n += 1 }
+        }
+        guard let botao = add else { XCTFail("sem Add to Home Screen"); return }
+        botao.tap(); sleep(3)
+        guard let ok = achar(safari, ["Add"], espera: 4) else { XCTFail("sem Add"); return }
+        var espera = 0
+        while !ok.isEnabled && espera < 30 { sleep(1); espera += 1 }
+        ok.tap(); sleep(4)
+        XCUIDevice.shared.press(.home); sleep(2)
+        let icone = springboard.icons["Lume"].firstMatch
+        var i = 0
+        while !(icone.exists && icone.isHittable) && i < 3 { springboard.swipeLeft(); sleep(1); i += 1 }
+        guard icone.exists else { XCTFail("ícone não encontrado"); return }
+        icone.tap()
+        guard let exemplo = achar(web, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 60) else { XCTFail("estante não carregou"); return }
+        exemplo.tap()
+        guard achar(web, ["Trocar informação do rodapé"], espera: 60) != nil else { XCTFail("livro não abriu"); return }
+        sleep(3)
+        nota("livro aberto, sem voz", "medir_1_sem_voz")
+        sleep(20)
+        tocar(t.width / 2, t.height * 0.5); sleep(2)
+        guard let ouvir = achar(web, ["Ouvir"], espera: 4) else { XCTFail("sem Ouvir"); return }
+        ouvir.tap(); sleep(2)
+        if let okVoz = achar(web, ["OK"], espera: 5) ?? achar(springboard, ["OK"], espera: 1) { okVoz.tap() }
+        XCTAssertTrue(achar(web, ["Pausar"], espera: 150) != nil, "começou a ler")
+        nota("começou", "longa_inicio")
+        var parou = -1
+        for minuto in 1...minutos {
+            sleep(60)
+            if minuto == 2 { nota("lendo há 2 min", "medir_2_lendo") }
+            if minuto == minutos { nota("lendo há \(minuto) min", "medir_3_fim") }
+            let lendo = achar(web, ["Pausar"], espera: 3) != nil
+            nota(lendo ? "lendo" : "PAROU", "longa_minuto_\(minuto)")
+            if !lendo && parou < 0 { parou = minuto; foto("parou_\(minuto)") }
+        }
+        foto("fim")
+        nota(parou < 0 ? "leu \(minutos) minutos sem parar" : "parou no minuto \(parou)", "longa_resultado")
+        XCTAssertTrue(parou < 0, "leitura longa sem parar")
+    }
+}

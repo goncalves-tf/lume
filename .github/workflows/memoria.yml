@@ -1,0 +1,56 @@
+name: iPhone (leitura longa e memória, versão nova x antiga)
+on:
+  push:
+    branches: [testes-ios]
+    paths: ['UITests/LeituraLongaUITests.swift', '.github/workflows/memoria.yml', 'gatilho-memoria.txt']
+jobs:
+  memoria:
+    runs-on: macos-26
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        versao: [nova, antiga]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Projeto de teste
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+      - name: Simulador iPhone 15
+        run: |
+          RT=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; print(r[-1]['identifier'])")
+          UDID=$(xcrun simctl create Memoria "iPhone 15" "$RT")
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          URL=https://goncalves-tf.github.io/lume/
+          [ "${{ matrix.versao }}" = antiga ] && URL=https://goncalves-tf.github.io/lume/antigo/
+          echo "Versão ${{ matrix.versao }}: $URL"
+          for i in 1 2 3; do xcrun simctl openurl "$UDID" "$URL" && break; sleep 15; done
+          sleep 15
+      - name: Leitura longa com medições
+        run: |
+          : > teste.log
+          maior() { ps -axo pid=,rss=,command= | grep 'com.apple.WebKit.WebContent' | grep -v grep | sort -k2 -n -r | head -1 | awk '{print $1}'; }
+          medir() { PID=$(maior); echo "===== $1 (pid $PID) $(date +%H:%M:%S)" >> medidas.txt; footprint $PID 2>&1 | grep -E "Footprint:|phys_footprint" >> medidas.txt || true; }
+          ( for m in medir_1_sem_voz medir_2_lendo medir_3_fim; do while ! grep -q "$m" teste.log; do sleep 2; done; sleep 3; medir "$m"; done ) &
+          # A cada 20 s: memória que conta para o iPhone (phys_footprint) do maior processo WebContent.
+          ( while true; do PID=$(maior); echo "$(date +%H:%M:%S) pid=$PID $(footprint $PID 2>/dev/null | grep -oE 'phys_footprint: [0-9.]+ [KMG]B' | head -1)" >> linha.txt; sleep 20; done ) &
+          export TEST_RUNNER_LUME_MINUTOS=10
+          set -o pipefail
+          xcodebuild test -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -resultBundlePath resultado.xcresult -only-testing:LumeUITests/LeituraLongaUITests/testLeituraLonga CODE_SIGNING_ALLOWED=NO 2>&1 | tee teste.log | grep -E "LUME:|error|Test Case|passed|failed" | head -60
+      - name: Medidas e registros de falha
+        if: always()
+        run: |
+          cat medidas.txt || true
+          echo "== memória ao longo do tempo"; cat linha.txt || true
+          echo "== registros de falha do WebKit"
+          for f in $(ls -t ~/Library/Logs/DiagnosticReports/*WebContent* 2>/dev/null | head -3); do echo "===== $f"; head -c 5000 "$f"; echo; done
+          mkdir -p saida; cp medidas.txt linha.txt saida/ 2>/dev/null; cp ~/Library/Logs/DiagnosticReports/*WebContent* saida/ 2>/dev/null || true
+          xcrun xcresulttool export attachments --path resultado.xcresult --output-path saida >/dev/null 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: memoria-${{ matrix.versao }}
+          path: saida
