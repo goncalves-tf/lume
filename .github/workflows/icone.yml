@@ -1,0 +1,46 @@
+name: iPhone (Laboratório do ícone no modo noturno)
+on:
+  push:
+    branches: [testes-ios]
+    paths: ['UITests/IconeUITests.swift', '.github/workflows/icone.yml']
+jobs:
+  icone:
+    runs-on: macos-26
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Projeto de teste
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+      - name: Simulador iPhone 15
+        run: |
+          RT=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; print(r[-1]['identifier'])")
+          UDID=$(xcrun simctl create Icone "iPhone 15" "$RT")
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+      - name: Compilar testes
+        run: xcodebuild build-for-testing -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd CODE_SIGNING_ALLOWED=NO | tail -3
+      - name: Instalar e fotografar
+        run: |
+          mkdir -p prints
+          rodar() { local nome="$1"; shift; env "$@" xcodebuild test-without-building -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd -only-testing:LumeUITests/IconeUITests/$T -resultBundlePath "r-$nome.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "error|passed|failed" | head -3; mkdir -p "prints/$nome"; xcrun xcresulttool export attachments --path "r-$nome.xcresult" --output-path "prints/$nome" >/dev/null 2>&1 || true; }
+          abrir() { for i in 1 2 3; do xcrun simctl openurl "$UDID" "https://goncalves-tf.github.io/lume/lab/$1/" && break; sleep 10; done; sleep 8; }
+          xcrun simctl ui "$UDID" appearance light
+          for p in icone-a icone-b icone-c; do abrir $p; T=testInstalar rodar "instalar-$p" TEST_RUNNER_LUME_ICONE=$p; done
+          T=testFotoInicio rodar foto-claro TEST_RUNNER_LUME_FOTO=claro
+          xcrun simctl ui "$UDID" appearance dark
+          sleep 5
+          T=testFotoInicio rodar foto-noite TEST_RUNNER_LUME_FOTO=noite
+          abrir icone-a2; T=testInstalar rodar instalar-icone-a2 TEST_RUNNER_LUME_ICONE=icone-a2
+          T=testFotoInicio rodar foto-noite-a2 TEST_RUNNER_LUME_FOTO=noite_com_a2
+          xcrun simctl ui "$UDID" appearance light
+          sleep 5
+          T=testFotoInicio rodar foto-claro-final TEST_RUNNER_LUME_FOTO=claro_final
+          ls -R prints | grep -c png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prints-icone
+          path: prints
