@@ -45,14 +45,14 @@ final class FundoUITests: XCTestCase {
         }
         guard achar(safari, ["Começar"], espera: 40) != nil else { XCTFail("página não carregou"); return }
         if let mais = achar(safari, ["MoreMenuButton", "More"], espera: 4) { mais.tap(); sleep(2) }
-        var add = achar(safari, ["Add to Home Screen"], espera: 2)
-        if add == nil, let comp = achar(safari, ["Share", "ShareButton"], espera: 4) {
+        var adicionar = achar(safari, ["Add to Home Screen"], espera: 2)
+        if adicionar == nil, let comp = achar(safari, ["Share", "ShareButton"], espera: 4) {
             comp.tap(); sleep(3)
-            add = achar(safari, ["Add to Home Screen"], espera: 3)
+            adicionar = achar(safari, ["Add to Home Screen"], espera: 3)
             var n = 0
-            while (add == nil || !add!.isHittable) && n < 5 { safari.swipeUp(); sleep(1); add = achar(safari, ["Add to Home Screen"], espera: 2); n += 1 }
+            while (adicionar == nil || !adicionar!.isHittable) && n < 5 { safari.swipeUp(); sleep(1); adicionar = achar(safari, ["Add to Home Screen"], espera: 2); n += 1 }
         }
-        guard let botao = add else { XCTFail("sem Add to Home Screen"); return }
+        guard let botao = adicionar else { XCTFail("sem Add to Home Screen"); return }
         botao.tap(); sleep(3)
         guard let ok = achar(safari, ["Add"], espera: 4) else { XCTFail("sem Add"); return }
         var espera = 0
