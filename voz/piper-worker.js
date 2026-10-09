@@ -62,11 +62,13 @@ async function iniciar(msg) {
   const urlModelo = base + msg.voz + '.onnx'
   config = JSON.parse(new TextDecoder().decode(await baixar(urlModelo + '.json')))
   // Tamanhos para a barra de progresso: idioma (18 MB) + motor (10 MB) + voz (63 MB).
-  const dadosEspeak = await baixar(base + 'piper_phonemize.data', (f, t) => postMessage({ tipo: 'progresso', parte: 'idioma', feito: f, total: t }))
+  let dadosEspeak = await baixar(base + 'piper_phonemize.data', (f, t) => postMessage({ tipo: 'progresso', parte: 'idioma', feito: f, total: t }))
   // Os binários vão direto da cópia guardada (funciona sem internet depois da 1ª vez).
-  const binOrt = await baixar(base + 'ort-wasm-simd.wasm', (f, t) => postMessage({ tipo: 'progresso', parte: 'motor', feito: f, total: t }))
-  ort.env.wasm.wasmPaths = { 'ort-wasm-simd.wasm': URL.createObjectURL(new Blob([binOrt], { type: 'application/wasm' })) }
-  const wasmFonemas = await baixar(base + 'piper_phonemize.wasm')
+  let binOrt = await baixar(base + 'ort-wasm-simd.wasm', (f, t) => postMessage({ tipo: 'progresso', parte: 'motor', feito: f, total: t }))
+  const urlOrt = URL.createObjectURL(new Blob([binOrt], { type: 'application/wasm' }))
+  binOrt = null
+  ort.env.wasm.wasmPaths = { 'ort-wasm-simd.wasm': urlOrt }
+  let wasmFonemas = await baixar(base + 'piper_phonemize.wasm')
   fonemizador = await createPiperPhonemize({
     wasmBinary: wasmFonemas,
     print: (txt) => { saidaFonemas?.(txt) },
@@ -74,11 +76,18 @@ async function iniciar(msg) {
     locateFile: (u) => (u.endsWith('.wasm') ? base + 'piper_phonemize.wasm' : u.endsWith('.data') ? base + 'piper_phonemize.data' : u),
     getPreloadedPackage: (nome) => (nome.endsWith('.data') ? dadosEspeak : null),
   })
-  const modelo = await baixar(urlModelo, (f, t) => postMessage({ tipo: 'progresso', parte: 'voz', feito: f, total: t }))
+  // Já copiados para dentro do fonemizador: solta as cópias (memória conta no limite do iPhone).
+  dadosEspeak = null
+  wasmFonemas = null
+  let modelo = await baixar(urlModelo, (f, t) => postMessage({ tipo: 'progresso', parte: 'voz', feito: f, total: t }))
   // Sem "arena" e sem "padrões de memória": cada trecho tem um tamanho diferente, e com eles ligados o motor
   // guarda um bloco novo de memória para cada tamanho (a memória só cresce até o iPhone fechar o app).
   const economia = msg.economia !== false
-  sessao = await ort.InferenceSession.create(modelo, { executionProviders: ['wasm'], graphOptimizationLevel: 'all', enableCpuMemArena: !economia, enableMemPattern: !economia })
+  const opcoes = { executionProviders: ['wasm'], graphOptimizationLevel: msg.otimizacao || 'all', enableCpuMemArena: !economia, enableMemPattern: !economia }
+  if (msg.semPrepack === true) opcoes.extra = { session: { disable_prepacking: '1' } }
+  sessao = await ort.InferenceSession.create(modelo, opcoes)
+  modelo = null
+  URL.revokeObjectURL(urlOrt)
   postMessage({ tipo: 'pronto' })
 }
 
