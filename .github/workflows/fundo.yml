@@ -1,0 +1,43 @@
+name: iPhone (áudio com o app fora da tela, 3 jeitos)
+on:
+  push:
+    branches: [testes-ios]
+    paths: ['UITests/FundoUITests.swift', '.github/workflows/fundo.yml']
+jobs:
+  fundo:
+    runs-on: macos-26
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        modo: [elemento, webaudio, mse]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Projeto de teste
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+      - name: Simulador iPhone 15
+        run: |
+          RT=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; print(r[-1]['identifier'])")
+          UDID=$(xcrun simctl create Fundo "iPhone 15" "$RT")
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          for i in 1 2 3; do xcrun simctl openurl "$UDID" "https://goncalves-tf.github.io/lume/lab/fundo-${{ matrix.modo }}/" && break; sleep 15; done
+          sleep 12
+      - name: Teste
+        run: |
+          case "${{ matrix.modo }}" in elemento) N=FElemento;; webaudio) N=FWebaudio;; mse) N=FMse;; esac
+          export TEST_RUNNER_LUME_FUNDO=$N
+          xcodebuild test -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -resultBundlePath resultado.xcresult -only-testing:LumeUITests/FundoUITests/testFundo CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "LUME:|error|Test Case|passed|failed" | head -20
+      - name: Prints
+        if: always()
+        run: |
+          mkdir -p saida
+          xcrun xcresulttool export attachments --path resultado.xcresult --output-path saida >/dev/null 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fundo-${{ matrix.modo }}
+          path: saida
