@@ -126,7 +126,13 @@ final class LeituraLongaUITests: XCTestCase {
         while !(icone.exists && icone.isHittable) && i < 3 { springboard.swipeLeft(); sleep(1); i += 1 }
         guard icone.exists else { XCTFail("ícone não encontrado"); return }
         icone.tap()
-        guard let exemplo = achar(web, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 60) else { XCTFail("estante não carregou"); return }
+        var exemploAchado = achar(web, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 60)
+        if exemploAchado == nil {
+            foto("estante_demorou")
+            web.terminate(); sleep(2); icone.tap()
+            exemploAchado = achar(web, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 60)
+        }
+        guard let exemplo = exemploAchado else { foto("estante_nao_carregou"); XCTFail("estante não carregou"); return }
         exemplo.tap()
         var aberto = achar(web, ["Trocar informação do rodapé"], espera: 30) != nil
         if !aberto, let de_novo = achar(web, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 3) { de_novo.tap(); aberto = achar(web, ["Trocar informação do rodapé"], espera: 45) != nil }
