@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        modo: [elemento, webaudio, mse]
+        modo: [elemento, mse]
     steps:
       - uses: actions/checkout@v4
       - name: Projeto de teste

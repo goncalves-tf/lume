@@ -44,6 +44,7 @@ final class FundoUITests: XCTestCase {
             if let x = achar(safari, ["xmark.circle.fill", "Close", "Not Now", "Continue"], espera: 1), x.isHittable { x.tap(); sleep(1) } else { break }
         }
         guard achar(safari, ["Começar"], espera: 40) != nil else { XCTFail("página não carregou"); return }
+        sleep(3)
         if let mais = achar(safari, ["MoreMenuButton", "More"], espera: 4) { mais.tap(); sleep(2) }
         var adicionar = achar(safari, ["Add to Home Screen"], espera: 2)
         if adicionar == nil, let comp = achar(safari, ["Share", "ShareButton"], espera: 4) {
