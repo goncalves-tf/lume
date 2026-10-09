@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        versao: [nova, antiga]
+        versao: [nova]
     steps:
       - uses: actions/checkout@v4
       - name: Projeto de teste

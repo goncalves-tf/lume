@@ -64,7 +64,14 @@ final class LeituraLongaUITests: XCTestCase {
         icone.tap()
         guard let exemplo = achar(web, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 60) else { XCTFail("estante não carregou"); return }
         exemplo.tap()
-        guard achar(web, ["Trocar informação do rodapé"], espera: 60) != nil else { XCTFail("livro não abriu"); return }
+        var aberto = achar(web, ["Trocar informação do rodapé"], espera: 30) != nil
+        if !aberto {
+            foto("livro_nao_abriu_1")
+            // Às vezes o primeiro toque chega antes da estante ficar pronta: toca de novo.
+            if let de_novo = achar(web, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 3) { de_novo.tap() }
+            aberto = achar(web, ["Trocar informação do rodapé"], espera: 45) != nil
+        }
+        guard aberto else { foto("livro_nao_abriu_2"); XCTFail("livro não abriu"); return }
         sleep(3)
         nota("livro aberto, sem voz", "medir_1_sem_voz")
         sleep(20)
