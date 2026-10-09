@@ -2,7 +2,7 @@ name: iPhone (leitura longa e memória, versão nova x antiga)
 on:
   push:
     branches: [testes-ios]
-    paths: ['UITests/LeituraLongaUITests.swift', '.github/workflows/memoria.yml', 'gatilho-memoria.txt']
+    paths: ['.github/workflows/memoria.yml', 'gatilho-memoria.txt']
 jobs:
   memoria:
     runs-on: macos-26

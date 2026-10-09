@@ -1,0 +1,43 @@
+name: iPhone (voz com o app fora da tela)
+on:
+  push:
+    branches: [testes-ios]
+    paths: ['UITests/LeituraLongaUITests.swift', '.github/workflows/fora.yml', 'gatilho-fora.txt']
+jobs:
+  fora:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Projeto de teste
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+      - name: Simulador iPhone 15
+        run: |
+          RT=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; print(r[-1]['identifier'])")
+          UDID=$(xcrun simctl create Fora "iPhone 15" "$RT")
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          for i in 1 2 3; do xcrun simctl openurl "$UDID" "https://goncalves-tf.github.io/lume/" && break; sleep 15; done
+          sleep 15
+      - name: Voz fora da tela
+        run: |
+          : > teste.log
+          ( while ! grep -q "diario_fora_copiado" teste.log; do sleep 2; done; sleep 1; xcrun simctl pbpaste "$UDID" > diario.txt ) &
+          export TEST_RUNNER_LUME_FORA=1
+          set -o pipefail
+          xcodebuild test -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -resultBundlePath resultado.xcresult -only-testing:LumeUITests/LeituraLongaUITests/testForaDaTela CODE_SIGNING_ALLOWED=NO 2>&1 | tee teste.log | grep -E "LUME:|error|Test Case|passed|failed" | head -40
+      - name: Relatório do app
+        if: always()
+        run: |
+          sleep 3
+          grep -E "tela|áudio|voz|abriu|ERRO" diario.txt | tail -120 || true
+          mkdir -p saida; cp diario.txt saida/ 2>/dev/null || true
+          xcrun xcresulttool export attachments --path resultado.xcresult --output-path saida >/dev/null 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fora
+          path: saida

@@ -94,4 +94,73 @@ final class LeituraLongaUITests: XCTestCase {
         nota(parou < 0 ? "leu \(minutos) minutos sem parar" : "parou no minuto \(parou)", "longa_resultado")
         XCTAssertTrue(parou < 0, "leitura longa sem parar")
     }
+
+    // Com a voz lendo, ele abre outro app (Relógio, para o cronômetro) por 90 s e volta.
+    // A voz tem que continuar fora da tela; o relatório do app mostra o que tocou enquanto estava escondido.
+    func testForaDaTela() throws {
+        guard ProcessInfo.processInfo.environment["LUME_FORA"] != nil else { throw XCTSkip("só no workflow") }
+        let t = tela
+        safari.activate()
+        sleep(4)
+        for _ in 0..<3 {
+            if let x = achar(safari, ["xmark.circle.fill", "Close", "Not Now", "Continue"], espera: 1), x.isHittable { x.tap(); sleep(1) } else { break }
+        }
+        guard achar(safari, ["Ou experimente com Dom Casmurro, de Machado de Assis", "Adicionar livro"], espera: 45) != nil else { XCTFail("site não carregou"); return }
+        if let mais = achar(safari, ["MoreMenuButton", "More"], espera: 4) { mais.tap(); sleep(2) }
+        var add = achar(safari, ["Add to Home Screen"], espera: 2)
+        if add == nil, let comp = achar(safari, ["Share", "ShareButton"], espera: 4) {
+            comp.tap(); sleep(3)
+            add = achar(safari, ["Add to Home Screen"], espera: 3)
+            var n = 0
+            while (add == nil || !add!.isHittable) && n < 5 { safari.swipeUp(); sleep(1); add = achar(safari, ["Add to Home Screen"], espera: 2); n += 1 }
+        }
+        guard let botao = add else { XCTFail("sem Add to Home Screen"); return }
+        botao.tap(); sleep(3)
+        guard let ok = achar(safari, ["Add"], espera: 4) else { XCTFail("sem Add"); return }
+        var espera = 0
+        while !ok.isEnabled && espera < 30 { sleep(1); espera += 1 }
+        ok.tap(); sleep(4)
+        XCUIDevice.shared.press(.home); sleep(2)
+        let icone = springboard.icons["Lume"].firstMatch
+        var i = 0
+        while !(icone.exists && icone.isHittable) && i < 3 { springboard.swipeLeft(); sleep(1); i += 1 }
+        guard icone.exists else { XCTFail("ícone não encontrado"); return }
+        icone.tap()
+        guard let exemplo = achar(web, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 60) else { XCTFail("estante não carregou"); return }
+        exemplo.tap()
+        var aberto = achar(web, ["Trocar informação do rodapé"], espera: 30) != nil
+        if !aberto, let de_novo = achar(web, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 3) { de_novo.tap(); aberto = achar(web, ["Trocar informação do rodapé"], espera: 45) != nil }
+        guard aberto else { XCTFail("livro não abriu"); return }
+        sleep(3)
+        tocar(t.width / 2, t.height * 0.5); sleep(2)
+        guard let ouvir = achar(web, ["Ouvir"], espera: 4) else { XCTFail("sem Ouvir"); return }
+        ouvir.tap(); sleep(2)
+        if let okVoz = achar(web, ["OK"], espera: 5) ?? achar(springboard, ["OK"], espera: 1) { okVoz.tap() }
+        XCTAssertTrue(achar(web, ["Pausar"], espera: 150) != nil, "começou a ler")
+        sleep(40)
+        nota("vai para o Relógio", "fora_inicio")
+        let relogio = XCUIApplication(bundleIdentifier: "com.apple.mobiletimer")
+        relogio.launch()
+        sleep(4)
+        if let cron = achar(relogio, ["Stopwatch", "Cronômetro"], espera: 4) { cron.tap(); sleep(2) }
+        if let iniciar = achar(relogio, ["Start", "Iniciar"], espera: 4) { iniciar.tap() }
+        foto("relogio")
+        sleep(90)
+        nota("volta para o Lume", "fora_fim")
+        web.activate()
+        sleep(5)
+        let lendo = achar(web, ["Pausar"], espera: 5) != nil
+        nota(lendo ? "lendo ao voltar" : "PAROU", "fora_resultado")
+        // Relatório do app (o workflow lê a área de transferência).
+        tocar(t.width / 2, t.height * 0.5); sleep(2)
+        if let texto = achar(web, ["Texto"], espera: 4) {
+            texto.tap(); sleep(2)
+            var b = achar(web, ["Copiar relatório de problemas"], espera: 3)
+            var n = 0
+            while (b == nil || !b!.isHittable) && n < 6 { web.swipeUp(); sleep(1); b = achar(web, ["Copiar relatório de problemas"], espera: 2); n += 1 }
+            b?.tap(); sleep(2)
+            nota("copiou", "diario_fora_copiado")
+            sleep(6)
+        }
+    }
 }
