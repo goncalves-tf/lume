@@ -138,13 +138,12 @@ final class LeituraLongaUITests: XCTestCase {
         if let okVoz = achar(web, ["OK"], espera: 5) ?? achar(springboard, ["OK"], espera: 1) { okVoz.tap() }
         XCTAssertTrue(achar(web, ["Pausar"], espera: 150) != nil, "começou a ler")
         sleep(40)
-        nota("vai para o Relógio", "fora_inicio")
-        let relogio = XCUIApplication(bundleIdentifier: "com.apple.mobiletimer")
-        relogio.launch()
+        nota("vai para outro app", "fora_inicio")
+        // O simulador não tem o Relógio: abre os Ajustes (o efeito é o mesmo, o Lume sai da tela).
+        let outro = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+        outro.activate()
         sleep(4)
-        if let cron = achar(relogio, ["Stopwatch", "Cronômetro"], espera: 4) { cron.tap(); sleep(2) }
-        if let iniciar = achar(relogio, ["Start", "Iniciar"], espera: 4) { iniciar.tap() }
-        foto("relogio")
+        foto("outro_app")
         sleep(90)
         nota("volta para o Lume", "fora_fim")
         web.activate()
