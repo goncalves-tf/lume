@@ -45,6 +45,10 @@ final class IconeUITests: XCTestCase {
         sleep(3)
         foto("\(nome)_tela_de_adicionar")
         guard let confirmar = achar(safari, ["Add"], espera: 4) else { XCTFail("sem Add"); return }
+        // O botão Adicionar só liga quando a página termina de carregar o ícone.
+        var n = 0
+        while !confirmar.isEnabled && n < 30 { sleep(1); n += 1 }
+        foto("\(nome)_pronto_para_adicionar")
         confirmar.tap()
         sleep(4)
         XCUIDevice.shared.press(.home)

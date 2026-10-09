@@ -28,7 +28,7 @@ jobs:
           rodar() { local nome="$1"; shift; env "$@" xcodebuild test-without-building -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd -only-testing:LumeUITests/IconeUITests/$T -resultBundlePath "r-$nome.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "error|passed|failed" | head -3; mkdir -p "prints/$nome"; xcrun xcresulttool export attachments --path "r-$nome.xcresult" --output-path "prints/$nome" >/dev/null 2>&1 || true; }
           abrir() { for i in 1 2 3; do xcrun simctl openurl "$UDID" "https://goncalves-tf.github.io/lume/lab/$1/" && break; sleep 10; done; sleep 8; }
           xcrun simctl ui "$UDID" appearance light
-          for p in icone-d icone-n; do abrir $p; T=testInstalar rodar "instalar-$p" TEST_RUNNER_LUME_ICONE=$p; done
+          for p in icone-d icone-a icone-n; do abrir $p; sleep 10; T=testInstalar rodar "instalar-$p" TEST_RUNNER_LUME_ICONE=$p; done
           T=testFotoInicio rodar foto-padrao TEST_RUNNER_LUME_FOTO=padrao
           T=testEstiloEscuro rodar estilo-escuro TEST_RUNNER_LUME_ESTILO=1
           T=testFotoInicio rodar foto-estilo-escuro-dia TEST_RUNNER_LUME_FOTO=estilo_escuro_iphone_claro
