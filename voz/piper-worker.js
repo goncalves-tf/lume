@@ -13,6 +13,20 @@ let saidaFonemas = null
 const fila = []
 let ocupado = false
 
+// Memória do motor (para o relatório de problemas): guarda as memórias WebAssembly criadas aqui.
+const memorias = []
+const guardarMemoria = (r) => {
+  const inst = (r && r.instance) || r
+  const m = inst && inst.exports && Object.values(inst.exports).find((x) => x instanceof WebAssembly.Memory)
+  if (m && !memorias.includes(m)) memorias.push(m)
+  return r
+}
+for (const nome of ['instantiate', 'instantiateStreaming']) {
+  const orig = WebAssembly[nome]
+  if (orig) WebAssembly[nome] = function (...a) { return orig.apply(this, a).then(guardarMemoria) }
+}
+const memoriaMB = () => Math.round(memorias.reduce((t, m) => t + m.buffer.byteLength, 0) / 1048576)
+
 async function baixar(url, aoProgresso) {
   let cache = null
   try { cache = await caches.open('lume-voz-v1') } catch { cache = null }
@@ -61,7 +75,10 @@ async function iniciar(msg) {
     getPreloadedPackage: (nome) => (nome.endsWith('.data') ? dadosEspeak : null),
   })
   const modelo = await baixar(urlModelo, (f, t) => postMessage({ tipo: 'progresso', parte: 'voz', feito: f, total: t }))
-  sessao = await ort.InferenceSession.create(modelo, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' })
+  // Sem "arena" e sem "padrões de memória": cada trecho tem um tamanho diferente, e com eles ligados o motor
+  // guarda um bloco novo de memória para cada tamanho (a memória só cresce até o iPhone fechar o app).
+  const economia = msg.economia !== false
+  sessao = await ort.InferenceSession.create(modelo, { executionProviders: ['wasm'], graphOptimizationLevel: 'all', enableCpuMemArena: !economia, enableMemPattern: !economia })
   postMessage({ tipo: 'pronto' })
 }
 
@@ -110,7 +127,7 @@ async function falar(msg) {
   const { output } = await sessao.run(feeds)
   const taxa = config.audio.sample_rate
   const dados = wav(output.data, taxa)
-  postMessage({ tipo: 'audio', id: msg.id, wav: dados, duracao: output.data.length / taxa, ms: performance.now() - t0 }, [dados])
+  postMessage({ tipo: 'audio', id: msg.id, wav: dados, duracao: output.data.length / taxa, ms: performance.now() - t0, memMB: memoriaMB() }, [dados])
 }
 
 async function andar() {
