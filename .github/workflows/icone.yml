@@ -28,16 +28,13 @@ jobs:
           rodar() { local nome="$1"; shift; env "$@" xcodebuild test-without-building -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd -only-testing:LumeUITests/IconeUITests/$T -resultBundlePath "r-$nome.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "error|passed|failed" | head -3; mkdir -p "prints/$nome"; xcrun xcresulttool export attachments --path "r-$nome.xcresult" --output-path "prints/$nome" >/dev/null 2>&1 || true; }
           abrir() { for i in 1 2 3; do xcrun simctl openurl "$UDID" "https://goncalves-tf.github.io/lume/lab/$1/" && break; sleep 10; done; sleep 8; }
           xcrun simctl ui "$UDID" appearance light
-          for p in icone-a icone-b icone-c; do abrir $p; T=testInstalar rodar "instalar-$p" TEST_RUNNER_LUME_ICONE=$p; done
-          T=testFotoInicio rodar foto-claro TEST_RUNNER_LUME_FOTO=claro
+          for p in icone-d icone-n; do abrir $p; T=testInstalar rodar "instalar-$p" TEST_RUNNER_LUME_ICONE=$p; done
+          T=testFotoInicio rodar foto-padrao TEST_RUNNER_LUME_FOTO=padrao
+          T=testEstiloEscuro rodar estilo-escuro TEST_RUNNER_LUME_ESTILO=1
+          T=testFotoInicio rodar foto-estilo-escuro-dia TEST_RUNNER_LUME_FOTO=estilo_escuro_iphone_claro
           xcrun simctl ui "$UDID" appearance dark
           sleep 5
-          T=testFotoInicio rodar foto-noite TEST_RUNNER_LUME_FOTO=noite
-          abrir icone-a2; T=testInstalar rodar instalar-icone-a2 TEST_RUNNER_LUME_ICONE=icone-a2
-          T=testFotoInicio rodar foto-noite-a2 TEST_RUNNER_LUME_FOTO=noite_com_a2
-          xcrun simctl ui "$UDID" appearance light
-          sleep 5
-          T=testFotoInicio rodar foto-claro-final TEST_RUNNER_LUME_FOTO=claro_final
+          T=testFotoInicio rodar foto-estilo-escuro-noite TEST_RUNNER_LUME_FOTO=estilo_escuro_iphone_noite
           ls -R prints | grep -c png
       - uses: actions/upload-artifact@v4
         if: always()

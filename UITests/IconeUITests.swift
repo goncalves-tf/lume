@@ -51,14 +51,47 @@ final class IconeUITests: XCTestCase {
         sleep(2)
     }
 
+    func arvore(_ app: XCUIApplication, _ nome: String) {
+        let a = XCTAttachment(string: app.debugDescription)
+        a.name = nome
+        a.lifetime = .keepAlways
+        add(a)
+    }
+
+    // Estilo dos ícones da Tela de Início em "Escuro" (Editar > Personalizar > Escuro), como no iPhone dele.
+    func testEstiloEscuro() throws {
+        guard ProcessInfo.processInfo.environment["LUME_ESTILO"] != nil else { throw XCTSkip("só no workflow do ícone") }
+        XCUIDevice.shared.press(.home)
+        sleep(2)
+        springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.86)).press(forDuration: 2.0)
+        sleep(2)
+        foto("estilo_1_editando")
+        arvore(springboard, "estilo_1_arvore")
+        if let editar = achar(springboard, ["Edit", "Editar"], espera: 4) { editar.tap(); sleep(2) }
+        foto("estilo_2_menu")
+        arvore(springboard, "estilo_2_arvore")
+        if let personalizar = achar(springboard, ["Customize", "Personalizar"], espera: 4) { personalizar.tap(); sleep(3) }
+        foto("estilo_3_personalizar")
+        arvore(springboard, "estilo_3_arvore")
+        if let escuro = achar(springboard, ["Dark", "Escuro"], espera: 4) { escuro.tap(); sleep(3) }
+        foto("estilo_4_escuro")
+        XCUIDevice.shared.press(.home)
+        sleep(2)
+        XCUIDevice.shared.press(.home)
+        sleep(2)
+    }
+
     func testFotoInicio() throws {
         guard let rotulo = ProcessInfo.processInfo.environment["LUME_FOTO"] else { throw XCTSkip("só no workflow do ícone") }
         XCUIDevice.shared.press(.home)
         sleep(3)
-        // Vai até a página onde estão os ícones novos e fotografa.
-        var i = 0
-        while !springboard.icons["IconeA"].firstMatch.isHittable && i < 4 { springboard.swipeLeft(); sleep(1); i += 1 }
-        sleep(2)
-        foto("inicio_\(rotulo)")
+        // Fotografa as páginas da Tela de Início (os ícones novos ficam numa delas).
+        for k in 1...3 {
+            foto("inicio_\(rotulo)_\(k)")
+            springboard.swipeLeft()
+            sleep(2)
+        }
+        XCUIDevice.shared.press(.home)
+        sleep(1)
     }
 }
