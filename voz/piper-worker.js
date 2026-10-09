@@ -130,7 +130,8 @@ async function falar(msg) {
   const feeds = {
     input: new ort.Tensor('int64', BigInt64Array.from(ids.map(BigInt)), [1, ids.length]),
     input_lengths: new ort.Tensor('int64', BigInt64Array.from([BigInt(ids.length)])),
-    scales: new ort.Tensor('float32', Float32Array.from([inf.noise_scale, inf.length_scale, inf.noise_w])),
+    // Velocidade pela própria voz (mais devagar ou mais rápido sem mudar o tom).
+    scales: new ort.Tensor('float32', Float32Array.from([inf.noise_scale, inf.length_scale / Math.max(0.5, Math.min(2.5, msg.velocidade || 1)), inf.noise_w])),
   }
   if (config.num_speakers > 1) feeds.sid = new ort.Tensor('int64', BigInt64Array.from([0n]))
   const { output } = await sessao.run(feeds)
@@ -171,6 +172,10 @@ async function andar() {
   if (ocupado) return
   ocupado = true
   while (fila.length) {
+    // Deixa as mensagens novas chegarem entre um trecho e outro (senão o pedido "passa na frente" só era
+    // atendido depois de gerar a fila inteira de trechos adiantados).
+    await new Promise((ok) => setTimeout(ok, 0))
+    if (!fila.length) break
     const m = fila.shift()
     try {
       if (m.tipo === 'iniciar') await iniciar(m)
