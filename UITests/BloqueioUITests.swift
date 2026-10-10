@@ -165,8 +165,8 @@ final class BloqueioUITests: XCTestCase {
         foto("\(cenario)_4_abriu")
         let lume = achar(web, ["Trocar informação do rodapé", "Pausar", "Ouvir"], espera: 3) != nil
         let bobo = acharContendo(web, "Segura pra marcar", espera: 2) != nil || acharContendo(web, "Bobossauro", espera: 1) != nil
-        let exemplo = acharContendo(web, "Example Domain", espera: 1) != nil
-        nota("lume=\(lume) bobossauro=\(bobo) example=\(exemplo) estadoWeb=\(web.state.rawValue)", "\(cenario)_abriu")
+        let site = acharContendo(web, "Example Domain", espera: 1) != nil
+        nota("lume=\(lume) bobossauro=\(bobo) example=\(site) estadoWeb=\(web.state.rawValue)", "\(cenario)_abriu")
         arvore(web, "\(cenario)_4_arvore_web")
 
         // Relatório do app (o workflow lê a área de transferência).

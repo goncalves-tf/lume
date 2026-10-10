@@ -32,7 +32,7 @@ jobs:
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
       - name: Compilar testes
-        run: xcodebuild build-for-testing -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd CODE_SIGNING_ALLOWED=NO | tail -3
+        run: xcodebuild build-for-testing -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "error:|BUILD" | head -20
       - name: Instalar, ler e bloquear
         run: |
           mkdir -p saida
