@@ -25,15 +25,16 @@ jobs:
       - name: Voz fora da tela
         run: |
           : > teste.log
-          ( while ! grep -q "diario_fora_copiado" teste.log; do sleep 2; done; sleep 1; xcrun simctl pbpaste "$UDID" > diario.txt ) &
+          ( while ! grep -qE "diario_fora_copiado|diario_pinca_copiado" teste.log; do sleep 2; done; sleep 1; xcrun simctl pbpaste "$UDID" > diario.txt ) &
           export TEST_RUNNER_LUME_FORA=1
+          export TEST_RUNNER_LUME_PINCA=1
           set -o pipefail
-          xcodebuild test -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -resultBundlePath resultado.xcresult -only-testing:LumeUITests/LeituraLongaUITests/testForaDaTela CODE_SIGNING_ALLOWED=NO 2>&1 | tee teste.log | grep -E "LUME:|error|Test Case|passed|failed" | head -40
+          xcodebuild test -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -resultBundlePath resultado.xcresult -only-testing:LumeUITests/LeituraLongaUITests/testPinca CODE_SIGNING_ALLOWED=NO 2>&1 | tee teste.log | grep -E "LUME:|error|Test Case|passed|failed" | head -40
       - name: Relatório do app
         if: always()
         run: |
           sleep 3
-          grep -E "tela|áudio|voz|abriu|ERRO" diario.txt | tail -120 || true
+          grep -E "pinça|abriu|ERRO" diario.txt | tail -40 || true
           mkdir -p saida; cp diario.txt saida/ 2>/dev/null || true
           xcrun xcresulttool export attachments --path resultado.xcresult --output-path saida >/dev/null 2>&1 || true
       - uses: actions/upload-artifact@v4

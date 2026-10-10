@@ -168,4 +168,37 @@ final class LeituraLongaUITests: XCTestCase {
             sleep(6)
         }
     }
+
+    // Pinça no livro de exemplo: aumenta e diminui a letra; o relatório do app mostra como foi.
+    func testPinca() throws {
+        guard ProcessInfo.processInfo.environment["LUME_PINCA"] != nil else { throw XCTSkip("só no workflow") }
+        let t = tela
+        safari.activate()
+        sleep(4)
+        for _ in 0..<3 {
+            if let x = achar(safari, ["xmark.circle.fill", "Close", "Not Now", "Continue"], espera: 1), x.isHittable { x.tap(); sleep(1) } else { break }
+        }
+        guard let exemplo = achar(safari, ["Ou experimente com Dom Casmurro, de Machado de Assis"], espera: 45) else { XCTFail("site não carregou"); return }
+        exemplo.tap()
+        guard achar(safari, ["Trocar informação do rodapé"], espera: 60) != nil else { XCTFail("livro não abriu"); return }
+        sleep(3)
+        tocar(t.width * 0.9, t.height * 0.5); sleep(2)
+        foto("pinca_antes")
+        safari.webViews.firstMatch.pinch(withScale: 1.6, velocity: 0.8)
+        sleep(3)
+        foto("pinca_maior")
+        safari.webViews.firstMatch.pinch(withScale: 0.7, velocity: -0.8)
+        sleep(3)
+        foto("pinca_menor")
+        tocar(t.width / 2, t.height * 0.5); sleep(2)
+        if let texto = achar(safari, ["Texto"], espera: 4) {
+            texto.tap(); sleep(2)
+            var b = achar(safari, ["Copiar relatório de problemas"], espera: 3)
+            var n = 0
+            while (b == nil || !b!.isHittable) && n < 6 { safari.swipeUp(); sleep(1); b = achar(safari, ["Copiar relatório de problemas"], espera: 2); n += 1 }
+            b?.tap(); sleep(2)
+            nota("copiou", "diario_pinca_copiado")
+            sleep(6)
+        }
+    }
 }
