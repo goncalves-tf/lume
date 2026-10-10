@@ -182,7 +182,8 @@ final class LeituraLongaUITests: XCTestCase {
         exemplo.tap()
         guard achar(safari, ["Trocar informação do rodapé"], espera: 60) != nil else { XCTFail("livro não abriu"); return }
         sleep(3)
-        for _ in 0..<4 { tocar(t.width * 0.92, t.height * 0.55); sleep(2) }
+        foto("pinca_inicio")
+        for i in 0..<4 { tocar(t.width * 0.92, t.height * 0.55); sleep(2); foto("pinca_virou_\(i + 1)") }
         foto("pinca_antes")
         safari.webViews.firstMatch.pinch(withScale: 1.3, velocity: 0.5)
         sleep(3)

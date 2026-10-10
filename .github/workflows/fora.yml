@@ -15,7 +15,9 @@ jobs:
           xcodegen generate
       - name: Simulador iPhone 15
         run: |
-          RT=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; print(r[-1]['identifier'])")
+          RT=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; r.sort(key=lambda x: [int(n) for n in x['version'].split('.')]); print(r[-1]['identifier'])")
+          xcrun simctl list runtimes | grep iOS
+          echo "runtime: $RT"
           UDID=$(xcrun simctl create Fora "iPhone 15" "$RT")
           echo "UDID=$UDID" >> $GITHUB_ENV
           xcrun simctl boot "$UDID"
