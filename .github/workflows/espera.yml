@@ -11,10 +11,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - cenario: publicada
-            url: https://goncalves-tf.github.io/lume/
-          - cenario: teste
+          - cenario: teste-sozinho
             url: https://goncalves-tf.github.io/lume/teste/
+            outro_url: ''
+            outro_nome: ''
+            por_cima: ''
+          - cenario: teste-bobossauro-por-cima
+            url: https://goncalves-tf.github.io/lume/teste/
+            outro_url: https://goncalves-tf.github.io/bobossauro/
+            outro_nome: Bobossauro
+            por_cima: Bobossauro
     steps:
       - uses: actions/checkout@v4
       - name: Projeto de teste
@@ -57,7 +63,7 @@ jobs:
             rodar abrir-outro testAbrirOutro "TEST_RUNNER_LUME_OUTRO=${{ matrix.outro_nome }}"
           fi
           ( while ! grep -q "diario_bloqueio_copiado" teste.log; do sleep 2; done; sleep 1; xcrun simctl pbpaste "$UDID" > saida/diario.txt ) &
-          rodar bloqueio testBloqueio TEST_RUNNER_LUME_BLOQUEIO=${{ matrix.cenario }} TEST_RUNNER_LUME_ESPERA_PAUSA=75
+          rodar bloqueio testBloqueio TEST_RUNNER_LUME_BLOQUEIO=${{ matrix.cenario }} TEST_RUNNER_LUME_ESPERA_PAUSA=75 ${{ matrix.por_cima && format('"TEST_RUNNER_LUME_OUTRO_POR_ULTIMO={0}"', matrix.por_cima) || '' }}
           sleep 4
           grep -E "voz: pausa|voz: play|voltou|contexto|áudio|abriu|ERRO" saida/diario.txt | tail -60 || true
       - uses: actions/upload-artifact@v4
