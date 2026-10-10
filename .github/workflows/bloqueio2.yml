@@ -1,8 +1,8 @@
-name: iPhone (tela bloqueada, pausa e notificação)
+name: iPhone (tela bloqueada, outro app aberto por cima)
 on:
   push:
     branches: [testes-ios]
-    paths: ['.github/workflows/bloqueio.yml', 'gatilho-bloqueio.txt']
+    paths: ['.github/workflows/bloqueio2.yml', 'gatilho-bloqueio2.txt']
 jobs:
   bloqueio:
     runs-on: macos-26
@@ -11,15 +11,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - cenario: mesmo-endereco
+          - cenario: bobossauro-por-cima
             outro_url: https://goncalves-tf.github.io/bobossauro/
             outro_nome: Bobossauro
-          - cenario: outro-endereco
+          - cenario: site-por-cima
             outro_url: https://example.com/
             outro_nome: Example Domain
-          - cenario: sozinho
-            outro_url: ''
-            outro_nome: ''
     steps:
       - uses: actions/checkout@v4
       - name: Projeto de teste
@@ -52,11 +49,11 @@ jobs:
             rodar abrir-outro testAbrirOutro "TEST_RUNNER_LUME_OUTRO=${{ matrix.outro_nome }}"
           fi
           ( while ! grep -q "diario_bloqueio_copiado" teste.log; do sleep 2; done; sleep 1; xcrun simctl pbpaste "$UDID" > saida/diario.txt ) &
-          rodar bloqueio testBloqueio TEST_RUNNER_LUME_BLOQUEIO=${{ matrix.cenario }} TEST_RUNNER_LUME_PAUSA_ANTES=1
+          rodar bloqueio testBloqueio TEST_RUNNER_LUME_BLOQUEIO=${{ matrix.cenario }} TEST_RUNNER_LUME_PAUSA_ANTES=1 "TEST_RUNNER_LUME_OUTRO_POR_ULTIMO=${{ matrix.outro_nome }}"
           sleep 4
           grep -E "voz: pausa|voz: play|voltou|áudio|abriu|ERRO" saida/diario.txt | tail -60 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bloqueio-${{ matrix.cenario }}
+          name: bloqueio2-${{ matrix.cenario }}
           path: saida

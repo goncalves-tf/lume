@@ -121,6 +121,13 @@ final class BloqueioUITests: XCTestCase {
             nota(achar(web, ["Pausar"], espera: 3) != nil ? "voltou a ler pelo app" : "NÃO voltou a ler", "\(cenario)_pausa_no_app")
         }
 
+        // Como pode ter acontecido no iPhone dele: com a voz lendo, abre outro app da Tela de Início por cima.
+        if let outro = ProcessInfo.processInfo.environment["LUME_OUTRO_POR_ULTIMO"] {
+            _ = abrirIcone(outro)
+            sleep(12)
+            foto("\(cenario)_1b_outro_por_cima")
+            nota("abriu \(outro) por cima com a voz lendo", "\(cenario)_outro_por_cima")
+        }
         // Bloqueia e acende a tela (fica na tela bloqueada, com os controles da voz).
         XCUIDevice.shared.perform(NSSelectorFromString("pressLockButton"))
         sleep(3)
@@ -158,7 +165,8 @@ final class BloqueioUITests: XCTestCase {
         foto("\(cenario)_4_abriu")
         let lume = achar(web, ["Trocar informação do rodapé", "Pausar", "Ouvir"], espera: 3) != nil
         let bobo = acharContendo(web, "Segura pra marcar", espera: 2) != nil || acharContendo(web, "Bobossauro", espera: 1) != nil
-        nota("lume=\(lume) bobossauro=\(bobo) estadoWeb=\(web.state.rawValue)", "\(cenario)_abriu")
+        let exemplo = acharContendo(web, "Example Domain", espera: 1) != nil
+        nota("lume=\(lume) bobossauro=\(bobo) example=\(exemplo) estadoWeb=\(web.state.rawValue)", "\(cenario)_abriu")
         arvore(web, "\(cenario)_4_arvore_web")
 
         // Relatório do app (o workflow lê a área de transferência).
