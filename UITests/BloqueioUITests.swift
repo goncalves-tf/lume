@@ -114,6 +114,12 @@ final class BloqueioUITests: XCTestCase {
         XCTAssertTrue(achar(web, ["Pausar"], espera: 180) != nil, "começou a ler")
         sleep(15)
         foto("\(cenario)_1_lendo")
+        // Como ele usa: pausa e volta a tocar pelo app antes de bloquear a tela.
+        if ProcessInfo.processInfo.environment["LUME_PAUSA_ANTES"] != nil {
+            if let p = achar(web, ["Pausar"], espera: 3) { p.tap(); sleep(3) }
+            if let t = achar(web, ["Tocar"], espera: 3) { t.tap(); sleep(8) }
+            nota(achar(web, ["Pausar"], espera: 3) != nil ? "voltou a ler pelo app" : "NÃO voltou a ler", "\(cenario)_pausa_no_app")
+        }
 
         // Bloqueia e acende a tela (fica na tela bloqueada, com os controles da voz).
         XCUIDevice.shared.perform(NSSelectorFromString("pressLockButton"))
@@ -123,19 +129,20 @@ final class BloqueioUITests: XCTestCase {
         foto("\(cenario)_2_bloqueada")
         arvore(springboard, "\(cenario)_2_arvore_bloqueada")
 
-        // Pausar pela tela bloqueada.
-        if let pausa = achar(springboard, ["Pause", "Pausar"], espera: 5) {
-            nota("achou o botão de pausa (\(pausa.label))", "\(cenario)_pausa")
-            pausa.tap()
-            sleep(4)
-            foto("\(cenario)_3_depois_de_pausar")
-            arvore(springboard, "\(cenario)_3_arvore_depois_de_pausar")
-            let virouPlay = achar(springboard, ["Play", "Reproduzir", "Tocar"], espera: 3) != nil
-            nota(virouPlay ? "o botão virou Play" : "o botão continua Pausa", "\(cenario)_pausa_resultado")
-            // Continua pela tela bloqueada, para o próximo passo ter a voz tocando.
-            if let play = achar(springboard, ["Play", "Reproduzir", "Tocar"], espera: 2) { play.tap(); sleep(5) }
-        } else {
-            nota("SEM botão de pausa na tela bloqueada", "\(cenario)_pausa")
+        // Pausar pela tela bloqueada, duas vezes (pausa, toca, pausa, toca).
+        for vez in 1...2 {
+            if let pausa = achar(springboard, ["Pause", "Pausar"], espera: 5) {
+                nota("achou o botão de pausa (\(pausa.label))", "\(cenario)_pausa_\(vez)")
+                pausa.tap()
+                sleep(6)
+                foto("\(cenario)_3_depois_de_pausar_\(vez)")
+                if vez == 1 { arvore(springboard, "\(cenario)_3_arvore_depois_de_pausar") }
+                let virouPlay = achar(springboard, ["Play", "Reproduzir", "Tocar"], espera: 3) != nil
+                nota(virouPlay ? "o botão virou Play" : "o botão continua Pausa", "\(cenario)_pausa_resultado_\(vez)")
+                if let play = achar(springboard, ["Play", "Reproduzir", "Tocar"], espera: 2) { play.tap(); sleep(8) }
+            } else {
+                nota("SEM botão de pausa na tela bloqueada", "\(cenario)_pausa_\(vez)")
+            }
         }
 
         // Toca na notificação (capa/título) para abrir o app.

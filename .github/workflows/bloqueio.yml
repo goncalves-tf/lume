@@ -52,9 +52,9 @@ jobs:
             rodar abrir-outro testAbrirOutro "TEST_RUNNER_LUME_OUTRO=${{ matrix.outro_nome }}"
           fi
           ( while ! grep -q "diario_bloqueio_copiado" teste.log; do sleep 2; done; sleep 1; xcrun simctl pbpaste "$UDID" > saida/diario.txt ) &
-          rodar bloqueio testBloqueio TEST_RUNNER_LUME_BLOQUEIO=${{ matrix.cenario }}
+          rodar bloqueio testBloqueio TEST_RUNNER_LUME_BLOQUEIO=${{ matrix.cenario }} TEST_RUNNER_LUME_PAUSA_ANTES=1
           sleep 4
-          grep -E "voz: pausa|voz: play|áudio|abriu|ERRO" saida/diario.txt | tail -40 || true
+          grep -E "voz: pausa|voz: play|voltou|áudio|abriu|ERRO" saida/diario.txt | tail -60 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
