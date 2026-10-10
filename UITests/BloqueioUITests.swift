@@ -146,6 +146,8 @@ final class BloqueioUITests: XCTestCase {
                 if vez == 1 { arvore(springboard, "\(cenario)_3_arvore_depois_de_pausar") }
                 let virouPlay = achar(springboard, ["Play", "Reproduzir", "Tocar"], espera: 3) != nil
                 nota(virouPlay ? "o botão virou Play" : "o botão continua Pausa", "\(cenario)_pausa_resultado_\(vez)")
+                // Pausa longa antes do play (o iPhone pode desligar a sessão de áudio do app nesse tempo).
+                if let s = ProcessInfo.processInfo.environment["LUME_ESPERA_PAUSA"], let seg = UInt32(s) { nota("espera \(seg) s pausado", "\(cenario)_espera_\(vez)"); sleep(seg) }
                 if let play = achar(springboard, ["Play", "Reproduzir", "Tocar"], espera: 2) { play.tap(); sleep(8) }
             } else {
                 nota("SEM botão de pausa na tela bloqueada", "\(cenario)_pausa_\(vez)")
