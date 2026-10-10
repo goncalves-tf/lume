@@ -1,0 +1,62 @@
+name: iPhone (tela bloqueada, pausa e notificação)
+on:
+  push:
+    branches: [testes-ios]
+    paths: ['UITests/BloqueioUITests.swift', '.github/workflows/bloqueio.yml', 'gatilho-bloqueio.txt']
+jobs:
+  bloqueio:
+    runs-on: macos-26
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cenario: mesmo-endereco
+            outro_url: https://goncalves-tf.github.io/bobossauro/
+            outro_nome: Bobossauro
+          - cenario: outro-endereco
+            outro_url: https://example.com/
+            outro_nome: Example Domain
+          - cenario: sozinho
+            outro_url: ''
+            outro_nome: ''
+    steps:
+      - uses: actions/checkout@v4
+      - name: Projeto de teste
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+      - name: Simulador iPhone 15
+        run: |
+          RT=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; r.sort(key=lambda x: [int(n) for n in x['version'].split('.')]); print(r[-1]['identifier'])")
+          echo "runtime: $RT"
+          UDID=$(xcrun simctl create Bloqueio "iPhone 15" "$RT")
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+      - name: Compilar testes
+        run: xcodebuild build-for-testing -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd CODE_SIGNING_ALLOWED=NO | tail -3
+      - name: Instalar, ler e bloquear
+        run: |
+          mkdir -p saida
+          : > teste.log
+          rodar() { local nome="$1"; local teste="$2"; shift 2; env "$@" xcodebuild test-without-building -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd -only-testing:LumeUITests/BloqueioUITests/$teste -resultBundlePath "r-$nome.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 | tee -a teste.log | grep -E "LUME:|error|passed|failed" | head -20; mkdir -p "saida/$nome"; xcrun xcresulttool export attachments --path "r-$nome.xcresult" --output-path "saida/$nome" >/dev/null 2>&1 || true; }
+          abrir() { for i in 1 2 3; do xcrun simctl openurl "$UDID" "$1" && break; sleep 10; done; sleep 15; }
+          if [ -n "${{ matrix.outro_url }}" ]; then
+            abrir "${{ matrix.outro_url }}"
+            rodar instalar-outro testInstalar TEST_RUNNER_LUME_INSTALAR=outro
+          fi
+          abrir "https://goncalves-tf.github.io/lume/"
+          rodar instalar-lume testInstalar TEST_RUNNER_LUME_INSTALAR=lume
+          if [ -n "${{ matrix.outro_nome }}" ]; then
+            rodar abrir-outro testAbrirOutro "TEST_RUNNER_LUME_OUTRO=${{ matrix.outro_nome }}"
+          fi
+          ( while ! grep -q "diario_bloqueio_copiado" teste.log; do sleep 2; done; sleep 1; xcrun simctl pbpaste "$UDID" > saida/diario.txt ) &
+          rodar bloqueio testBloqueio TEST_RUNNER_LUME_BLOQUEIO=${{ matrix.cenario }}
+          sleep 4
+          grep -E "voz: pausa|voz: play|áudio|abriu|ERRO" saida/diario.txt | tail -40 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bloqueio-${{ matrix.cenario }}
+          path: saida
