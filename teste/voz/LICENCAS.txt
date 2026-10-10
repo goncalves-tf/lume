@@ -1,8 +1,0 @@
-Voz natural no aparelho do Lume
-
-- Piper (rhasspy/piper), licença MIT: https://github.com/rhasspy/piper
-- Vozes pt_BR faber e cadu (rhasspy/piper-voices), dados de treino CC0: https://huggingface.co/rhasspy/piper-voices
-- piper_phonemize (rhasspy/piper-phonemize) com espeak-ng, licença GPL-3.0. Código-fonte:
-  https://github.com/rhasspy/piper-phonemize e https://github.com/espeak-ng/espeak-ng
-  Compilação para WebAssembly: https://www.npmjs.com/package/@diffusionstudio/piper-wasm (versão 1.0.0)
-- ONNX Runtime Web 1.18.0, licença MIT: https://github.com/microsoft/onnxruntime
