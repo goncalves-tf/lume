@@ -1,0 +1,16 @@
+{
+ "name": "V4",
+ "short_name": "V4",
+ "start_url": "/lume/lab/v4/",
+ "scope": "/lume/lab/v4/",
+ "display": "standalone",
+ "icons": [
+  {
+   "src": "/lume/icone-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  }
+ ],
+ "theme_color": "#1b1a18",
+ "background_color": "#1b1a18"
+}

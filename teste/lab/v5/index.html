@@ -1,0 +1,20 @@
+<!doctype html><html lang="pt-BR" style="background:#fbfaf7"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#fbfaf7"><meta name="apple-mobile-web-app-title" content="V5">
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="/lume/apple-touch-icon.png">
+<title>V5</title>
+<style>html,body{margin:0;height:100%;background:#fbfaf7;overflow:hidden}#app{position:fixed;inset:0;background:#fbfaf7;color:#e33}
+#borda{position:fixed;inset:0;border:5px solid #f0f;box-sizing:border-box;pointer-events:none;z-index:9}
+#seg{position:fixed;left:0;right:0;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);border:3px dashed #0c0;box-sizing:border-box;pointer-events:none;z-index:8}
+pre{position:absolute;top:40%;left:12px;right:12px;font:15px/1.4 ui-monospace,monospace;color:#f60;background:#0008;padding:8px;white-space:pre-wrap}</style></head>
+<body><div id="app"><pre id="d"></pre></div><div id="faixa" style="position:fixed;top:0;left:0;right:0;height:calc(env(safe-area-inset-top) + 16px);background:#fbfaf7;z-index:5"></div><div id="borda"></div><div id="seg"></div>
+<script>function env(l){var e=document.createElement('div');e.style.cssText='position:fixed;visibility:hidden;height:env(safe-area-inset-'+l+',0px)';document.body.appendChild(e);var h=e.offsetHeight;e.remove();return h}
+function draw(){document.getElementById('d').textContent='V5: padrao, comeca claro e vira escuro em 4s (meta+fundo+faixa fixa)
+standalone '+navigator.standalone+' | dm '+matchMedia('(display-mode: standalone)').matches+'
+screen '+screen.width+'x'+screen.height+'
+inner '+innerWidth+'x'+innerHeight+' | clientH '+document.documentElement.clientHeight+'
+safe T'+env('top')+' B'+env('bottom')+' L'+env('left')+' R'+env('right')+'
+'+(navigator.userAgent.match(/OS [\d_]+/)||[''])[0]+'
+'+'<span id=cor></span>'}
+draw();addEventListener('resize',draw);setTimeout(draw,1500)</script><span id="cor" style="position:fixed;top:30%;left:12px;color:#ff0;font:bold 20px sans-serif"></span><script>setTimeout(function(){var d='#1b1a18';document.documentElement.style.background=d;document.body.style.background=d;document.getElementById('app').style.background=d;var f=document.getElementById('faixa');if(f)f.style.background=d;var m=document.querySelector('meta[name=theme-color]');if(m)m.content=d;document.getElementById('cor').textContent='AGORA ESCURO'},4000)</script></body></html>
