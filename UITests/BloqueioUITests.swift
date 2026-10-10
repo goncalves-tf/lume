@@ -163,9 +163,10 @@ final class BloqueioUITests: XCTestCase {
         }
         sleep(6)
         foto("\(cenario)_4_abriu")
-        let lume = achar(web, ["Trocar informação do rodapé", "Pausar", "Ouvir"], espera: 3) != nil
-        let bobo = acharContendo(web, "Segura pra marcar", espera: 2) != nil || acharContendo(web, "Bobossauro", espera: 1) != nil
-        let site = acharContendo(web, "Example Domain", espera: 1) != nil
+        // Só conta o que está na frente (o outro app aberto por trás também aparece na árvore, mas não é tocável).
+        let lume = achar(web, ["Trocar informação do rodapé", "Pausar", "Ouvir"], espera: 3)?.isHittable ?? false
+        let bobo = (acharContendo(web, "código do casal", espera: 2) ?? acharContendo(web, "Segura pra marcar", espera: 1))?.isHittable ?? false
+        let site = acharContendo(web, "Example Domain", espera: 1)?.isHittable ?? false
         nota("lume=\(lume) bobossauro=\(bobo) example=\(site) estadoWeb=\(web.state.rawValue)", "\(cenario)_abriu")
         arvore(web, "\(cenario)_4_arvore_web")
 

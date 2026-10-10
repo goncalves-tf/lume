@@ -1,0 +1,67 @@
+name: iPhone (verificar versão de teste, Bobossauro aberto antes)
+on:
+  push:
+    branches: [testes-ios]
+    paths: ['.github/workflows/verificar2.yml', 'gatilho-verificar2.txt']
+jobs:
+  bloqueio:
+    runs-on: macos-26
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cenario: mesmo-endereco
+            outro_url: https://goncalves-tf.github.io/bobossauro/
+            outro_nome: Bobossauro
+            por_cima: ''
+    steps:
+      - uses: actions/checkout@v4
+      - name: Projeto de teste
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+      - name: Simulador iPhone 15
+        run: |
+          RT=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; r.sort(key=lambda x: [int(n) for n in x['version'].split('.')]); print(r[-1]['identifier'])")
+          echo "runtime: $RT"
+          UDID=$(xcrun simctl create Bloqueio "iPhone 15" "$RT")
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+      - name: Compilar testes
+        run: xcodebuild build-for-testing -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "error:|BUILD" | head -20
+      - name: Instalar, ler e bloquear
+        run: |
+          mkdir -p saida
+          : > teste.log
+          rodar() { local nome="$1"; local teste="$2"; shift 2; env "$@" xcodebuild test-without-building -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd -only-testing:LumeUITests/BloqueioUITests/$teste -resultBundlePath "r-$nome.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 | tee -a teste.log | grep -E "LUME:|error|passed|failed" | head -20; mkdir -p "saida/$nome"; xcrun xcresulttool export attachments --path "r-$nome.xcresult" --output-path "saida/$nome" >/dev/null 2>&1 || true; }
+          abrir() { for i in 1 2 3; do xcrun simctl openurl "$UDID" "$1" && break; sleep 10; done; sleep 15; }
+          if [ -n "${{ matrix.outro_url }}" ]; then
+            abrir "${{ matrix.outro_url }}"
+            rodar instalar-outro testInstalar TEST_RUNNER_LUME_INSTALAR=outro
+          fi
+          URL_LUME="https://goncalves-tf.github.io/lume/teste/"
+          if [ "${{ matrix.cenario }}" = "fora-da-tela" ]; then
+            abrir "$URL_LUME"
+            ( while ! grep -q "diario_fora_copiado" teste.log; do sleep 2; done; sleep 1; xcrun simctl pbpaste "$UDID" > saida/diario.txt ) &
+            env TEST_RUNNER_LUME_FORA=1 xcodebuild test-without-building -project LumeTeste.xcodeproj -scheme LumeUITests -destination "id=$UDID" -derivedDataPath dd -only-testing:LumeUITests/LeituraLongaUITests/testForaDaTela -resultBundlePath r-fora.xcresult CODE_SIGNING_ALLOWED=NO 2>&1 | tee -a teste.log | grep -E "LUME:|error|passed|failed" | head -20
+            sleep 4
+            grep -E "voz: pausa|voz: play|voltou|contexto|áudio|ERRO|abriu" saida/diario.txt | tail -60 || true
+            mkdir -p saida/fora; xcrun xcresulttool export attachments --path r-fora.xcresult --output-path saida/fora >/dev/null 2>&1 || true
+            exit 0
+          fi
+          abrir "$URL_LUME"
+          rodar instalar-lume testInstalar TEST_RUNNER_LUME_INSTALAR=lume
+          if [ -n "${{ matrix.outro_nome }}" ]; then
+            rodar abrir-outro testAbrirOutro "TEST_RUNNER_LUME_OUTRO=${{ matrix.outro_nome }}"
+          fi
+          ( while ! grep -q "diario_bloqueio_copiado" teste.log; do sleep 2; done; sleep 1; xcrun simctl pbpaste "$UDID" > saida/diario.txt ) &
+          rodar bloqueio testBloqueio TEST_RUNNER_LUME_BLOQUEIO=${{ matrix.cenario }} TEST_RUNNER_LUME_PAUSA_ANTES=1 ${{ matrix.por_cima && format('"TEST_RUNNER_LUME_OUTRO_POR_ULTIMO={0}"', matrix.por_cima) || '' }}
+          sleep 4
+          grep -E "voz: pausa|voz: play|voltou|contexto|áudio|abriu|ERRO" saida/diario.txt | tail -60 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verificar2-${{ matrix.cenario }}
+          path: saida
