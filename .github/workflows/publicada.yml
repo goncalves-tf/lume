@@ -12,11 +12,13 @@ jobs:
       matrix:
         include:
           - cenario: fora-da-tela
+            n: 1
             url: https://goncalves-tf.github.io/lume/
             outro_url: ''
             outro_nome: ''
             por_cima: ''
-          - cenario: publicada-pausa-longa
+          - cenario: fora-da-tela
+            n: 2
             url: https://goncalves-tf.github.io/lume/
             outro_url: ''
             outro_nome: ''
@@ -69,5 +71,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: publicada-${{ matrix.cenario }}
+          name: publicada-${{ matrix.cenario }}-${{ matrix.n }}
           path: saida
