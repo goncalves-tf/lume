@@ -1,4 +1,4 @@
-name: iPhone (versão publicada: fora da tela e pausa longa)
+name: iPhone (versão publicada, fora da tela e pausa longa)
 on:
   push:
     branches: [testes-ios]
